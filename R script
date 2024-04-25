@@ -1,0 +1,50 @@
+library(dplyr)
+library(tidyr)
+library(reshape2)
+set.seed(123)
+###load a p dataset
+data = read.csv("avoid2.csv")###p info
+model_iteration = 5000###Set number of iterations
+data1 = data.frame()####The result of the consumption cycle is stored in data1
+head(data)
+####secret
+for (j in 1:model_iteration) {
+###caculate in row 
+ for (i in 1:nrow(data)) {
+  ECI = runif (1,min=data$ECI_low[i],max=data$ECI_high[i]) 
+  level = runif(1,data$level_low[i],data$level_high[i])
+  con_dry =  level/ECI*100 
+  data$comsume[i] = con_dry 
+  data1[i,j] = data$comsume[i]
+ }
+  print(j)
+}
+data$mincon = apply(data1,1,min)###Maximum feed
+data$maxcon = apply(data1,1,max)###Minumum feed
+
+###save dry_weight
+data2 = read.csv("allRRA.csv")###Feeding data were imported
+data2 = melt(data2, id=c("species","gender","sam","low","high","mass","front_le","num"),variable.name= 'genus', value.name = 'RRA')
+data2 = full_join(data2,data,by = "genus",multiple = "all")
+data2[sapply(data2, is.infinite)] <- NA 
+data2[is.na(data2)]=0
+data2 = subset(data2,RRA>0&level_low>0)
+data3 = data.frame(matrix(ncol = model_iteration,nrow = nrow(data2)))
+data4 = data.frame(matrix(ncol = model_iteration,nrow = nrow(data2)))
+###for loop data2 model_iteration = 5000
+for (j in 1:5000) {
+   for (i in 1:nrow(data2)) {
+    mass = data2$mass[i]
+    prop = runif(1,data2$low[i],data2$high[i])
+    RRA = data2$RRA[i]
+    egg = runif(1,data2$egg_low[i],data2$egg_high[i]) 
+    sur = runif(1,data2$sur_high[i],data2$sur_low[i])
+    sex = runif(1,data2$sex_low[i],data2$sex_high[i])
+    con = runif(1,data2$mincon[i],data2$maxcon[i])
+    data3[i,j] = mass*prop*RRA*0.15*con###bat_saveG1
+    data4[i,j] = mass*prop*RRA*0.15*sex*egg*sur/100*con*0.01
+  }
+  print(j)
+}
+data2$minsave = apply(data3,1,min)
+data2$maxsave = apply(data3,1,max)
